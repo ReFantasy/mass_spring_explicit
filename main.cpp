@@ -12,9 +12,7 @@
 #include "Utils.h"
 using namespace std;
 
-int num_particles = 16;
-float spring_stiffness = 1.0;
-float damping = 1.0;
+
 
 #define numVAOs 1
 #define numVBOs 1
@@ -27,25 +25,14 @@ GLuint vbo[numVBOs];
 // variable allocation for display
 GLuint mLoc, vLoc, projLoc, tfLoc;
 int width, height;
-float aspect, timeFactor;
-glm::mat4 pMat, vMat, mMat, mvMat;
+
 
 void setupVertices(void)
 {
-	float vertexPositions[108] =
-	{ -1.0f,  1.0f, -1.0f, -1.0f, -1.0f, -1.0f, 1.0f, -1.0f, -1.0f,
-		1.0f, -1.0f, -1.0f, 1.0f,  1.0f, -1.0f, -1.0f,  1.0f, -1.0f,
-		1.0f, -1.0f, -1.0f, 1.0f, -1.0f,  1.0f, 1.0f,  1.0f, -1.0f,
-		1.0f, -1.0f,  1.0f, 1.0f,  1.0f,  1.0f, 1.0f,  1.0f, -1.0f,
-		1.0f, -1.0f,  1.0f, -1.0f, -1.0f,  1.0f, 1.0f,  1.0f,  1.0f,
-		-1.0f, -1.0f,  1.0f, -1.0f,  1.0f,  1.0f, 1.0f,  1.0f,  1.0f,
-		-1.0f, -1.0f,  1.0f, -1.0f, -1.0f, -1.0f, -1.0f,  1.0f,  1.0f,
-		-1.0f, -1.0f, -1.0f, -1.0f,  1.0f, -1.0f, -1.0f,  1.0f,  1.0f,
-		-1.0f, -1.0f,  1.0f,  1.0f, -1.0f,  1.0f,  1.0f, -1.0f, -1.0f,
-		1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f, -1.0f,  1.0f,
-		-1.0f,  1.0f, -1.0f, 1.0f,  1.0f, -1.0f, 1.0f,  1.0f,  1.0f,
-		1.0f,  1.0f,  1.0f, -1.0f,  1.0f,  1.0f, -1.0f,  1.0f, -1.0f
-	};
+	float vertexPositions[9] =
+	{ -0.5f,  0.f, -0.5f,
+   0.0f, 1.0f, -0.5f,
+   0.5f, 0.0f, -0.5f};
 
 	glGenVertexArrays(1, vao);
 	glBindVertexArray(vao[0]);
@@ -55,14 +42,10 @@ void setupVertices(void)
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertexPositions), vertexPositions, GL_STATIC_DRAW);
 }
 
-void init(GLFWwindow* window) {
+void init(GLFWwindow* window)
+{
 	renderingProgram = Utils::createShaderProgram("../vertShader.glsl", "../fragShader.glsl");
 
-	glfwGetFramebufferSize(window, &width, &height);
-	aspect = (float)width / (float)height;
-	pMat = glm::perspective(1.0472f, aspect, 0.1f, 1000.0f);
-
-	cameraX = 0.0f; cameraY = 0.0f; cameraZ = 420.0f; // Z=32.0f when 24 instances, 420.0f when 100000 instances
 	setupVertices();
 }
 
@@ -70,22 +53,10 @@ void SetFPS(GLFWwindow* window, double currentTime);
 
 void display(GLFWwindow* window, double currentTime) {
 	glClear(GL_DEPTH_BUFFER_BIT);
-	glClearColor(0.0, 0.0, 0.0, 1.0);
+	glClearColor(0.0, 1.0, 1.0, 1.0);
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	glUseProgram(renderingProgram);
-
-	vLoc = glGetUniformLocation(renderingProgram, "v_matrix");
-	projLoc = glGetUniformLocation(renderingProgram, "proj_matrix");
-
-	vMat = glm::translate(glm::mat4(1.0f), glm::vec3(-cameraX, -cameraY, -cameraZ));
-
-	glUniformMatrix4fv(vLoc, 1, GL_FALSE, glm::value_ptr(vMat));
-	glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(pMat));
-
-	timeFactor = ((float)currentTime);
-	tfLoc = glGetUniformLocation(renderingProgram, "tf");
-	glUniform1f(tfLoc, (float)timeFactor);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
 	glVertexAttribPointer(0, 3, GL_FLOAT, false, 0, 0);
@@ -94,75 +65,70 @@ void display(GLFWwindow* window, double currentTime) {
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
 
-	glDrawArraysInstanced(GL_TRIANGLES, 0, 36, 100000);	// 0, 36, 24  (or 100000)
+	glDrawArrays(GL_LINES, 0, 2);
 	SetFPS(window, currentTime);
 }
 
-void window_size_callback(GLFWwindow* win, int newWidth, int newHeight) {
-	aspect = (float)newWidth / (float)newHeight;
-	glViewport(0, 0, newWidth, newHeight);
-	pMat = glm::perspective(1.0472f, aspect, 0.1f, 1000.0f);
-}
 
-int main(void)
+int main(int argc, char *argv[])
 {
-	int width = 1 << 10;
-	int height = 1 << 10;
-	Matrix* A, * B, * C;
-	// …Í«ÎÕ–π‹ƒ⁄¥Ê
-	cudaMallocManaged((void**)&A, sizeof(Matrix));
-	cudaMallocManaged((void**)&B, sizeof(Matrix));
-	cudaMallocManaged((void**)&C, sizeof(Matrix));
-	int nBytes = width * height * sizeof(float);
-	cudaMallocManaged((void**)&A->elements, nBytes);
-	cudaMallocManaged((void**)&B->elements, nBytes);
-	cudaMallocManaged((void**)&C->elements, nBytes);
+//	int *num_particles = 16;
+//	float *spring_stiffness = 1.0;
+//	float *damping = 1.0;
+	//// Áî≥ËØ∑ÊâòÁÆ°ÂÜÖÂ≠ò
+	//cudaMallocManaged((void**)&A, sizeof(Matrix));
+	//cudaMallocManaged((void**)&B, sizeof(Matrix));
+	//cudaMallocManaged((void**)&C, sizeof(Matrix));
+	//int nBytes = width * height * sizeof(float);
+	//cudaMallocManaged((void**)&A->elements, nBytes);
+	//cudaMallocManaged((void**)&B->elements, nBytes);
+	//cudaMallocManaged((void**)&C->elements, nBytes);
 
-	// ≥ı ºªØ ˝æ›
-	A->height = height;
-	A->width = width;
-	B->height = height;
-	B->width = width;
-	C->height = height;
-	C->width = width;
-	for (int i = 0; i < width * height; ++i)
-	{
-		A->elements[i] = 1.0;
-		B->elements[i] = 2.0;
-	}
+	//// ÂàùÂßãÂåñÊï∞ÊçÆ
+	//A->height = height;
+	//A->width = width;
+	//B->height = height;
+	//B->width = width;
+	//C->height = height;
+	//C->width = width;
+	//for (int i = 0; i < width * height; ++i)
+	//{
+	//	A->elements[i] = 1.0;
+	//	B->elements[i] = 2.0;
+	//}
 
-	// ∂®“Âkernelµƒ÷¥––≈‰÷√
-	dim3 blockSize(32, 32);
-	dim3 gridSize((width + blockSize.x - 1) / blockSize.x,
-		(height + blockSize.y - 1) / blockSize.y);
-	// ÷¥––kernel
-	matMulKernel << < gridSize, blockSize >> > (A, B, C);
-
-
-	// Õ¨≤Ωdevice ±£÷§Ω·π˚ƒ‹’˝»∑∑√Œ 
-	cudaDeviceSynchronize();
-	// ºÏ≤È÷¥––Ω·π˚
-	float maxError = 0.0;
-	for (int i = 0; i < width * height; ++i)
-		maxError = fmax(maxError, fabs(C->elements[i] - 2 * width));
-	std::cout << "◊Ó¥ÛŒÛ≤Ó: " << maxError << std::endl;
-
-	return 0;
+	//// ÂÆö‰πâkernelÁöÑÊâßË°åÈÖçÁΩÆ
+	//dim3 blockSize(32, 32);
+	//dim3 gridSize((width + blockSize.x - 1) / blockSize.x,
+	//	(height + blockSize.y - 1) / blockSize.y);
+	//// ÊâßË°åkernel
+	//matMulKernel << < gridSize, blockSize >> > (A, B, C);
 
 
+	//// ÂêåÊ≠•device ‰øùËØÅÁªìÊûúËÉΩÊ≠£Á°ÆËÆøÈóÆ
+	//cudaDeviceSynchronize();
+	//// Ê£ÄÊü•ÊâßË°åÁªìÊûú
+	//float maxError = 0.0;
+	//for (int i = 0; i < width * height; ++i)
+	//	maxError = fmax(maxError, fabs(C->elements[i] - 2 * width));
+	//std::cout << "ÊúÄÂ§ßËØØÂ∑Æ: " << maxError << std::endl;
+
+	//return 0;
 
 
 
 
-	/*if (!glfwInit()) { exit(EXIT_FAILURE); }
+
+
+	if (!glfwInit()) { exit(EXIT_FAILURE); }
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-	GLFWwindow* window = glfwCreateWindow(600, 600, "Chapter 4 - program 2", NULL, NULL);
+	GLFWwindow* window = glfwCreateWindow(600, 600, "Lines", NULL, NULL);
 	glfwMakeContextCurrent(window);
 	if (glewInit() != GLEW_OK) { exit(EXIT_FAILURE); }
 	glfwSwapInterval(1);
 
-	glfwSetWindowSizeCallback(window, window_size_callback);
+	//glfwSetWindowSizeCallback(window, window_size_callback);
 
 	init(window);
 
@@ -174,7 +140,7 @@ int main(void)
 
 	glfwDestroyWindow(window);
 	glfwTerminate();
-	exit(EXIT_SUCCESS);*/
+	exit(EXIT_SUCCESS);
 
 
 

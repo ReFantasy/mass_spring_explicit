@@ -18,8 +18,8 @@ link_directories("D:/OpenGL/lib")
 link_libraries(glew32 glfw3 soil2 ${OPENGL_LIBRARY})
 
 # Eigen
-#INCLUDE_DIRECTORIES("D:/eigen-3.3.8/install/include")
-#include_directories(/usr/local/include)
+INCLUDE_DIRECTORIES("D:/eigen-3.3.8/install/include")
+include_directories(/usr/local/include)
 
 
 AUX_SOURCE_DIRECTORY(. SRC_LIST)
